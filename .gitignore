@@ -1,0 +1,34 @@
+# === Backend ===
+backend/models/stance_bert/
+backend/models/vinai_bert/
+backend/models/final_stance_model
+backend/appbefore.py
+backend/ke.py
+backend/stance_model.py
+backend/test.py
+backend/twitter_auth.py
+backend/.env
+backend/__pycache__/
+backend/*.pyc
+backend/*.log
+backend/venv/
+
+# === Frontend ===
+frontend/.env
+frontend/node_modules/
+frontend/dist/
+frontend/src/appbefore.js
+frontend/src/test.js
+frontend/src/TweetAnalyzer.js
+frontend/src/TwitterAuthSection.js
+frontend/src/api.js
+
+# === Global ===
+.env
+__pycache__/
+*.pyc
+*.log
+*.env
+.DS_Store
+.idea/
+.vscode/
