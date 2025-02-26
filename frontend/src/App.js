@@ -361,32 +361,55 @@ export default function App() {
                     transition={{ duration: 0.5, delay: 0.7 }}
                   >
                     {tokens.length > 0 && attentionScores.length > 0 && (
-                      <motion.div
-                        className="bg-white p-4 sm:p-6 rounded-lg shadow-md"
-                        initial={{ scale: 0.9 }}
-                        animate={{ scale: 1 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Attention Scores</h2>
-                        <div className="flex flex-wrap gap-2">
-                          {tokens.map((token, index) => (
+                    <motion.div
+                      className="bg-white p-4 sm:p-6 rounded-lg shadow-md"
+                      initial={{ scale: 0.9 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Attention Scores</h2>
+                      <div className="flex flex-wrap gap-2">
+                        {tokens.map((token, index) => {
+                          const score = attentionScores[index];
+                          return (
                             <motion.div
                               key={index}
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               transition={{ duration: 0.3, delay: index * 0.05 }}
-                              className="p-2 rounded text-sm sm:text-base"
-                              style={{
-                                backgroundColor: `rgba(0, 100, 255, ${attentionScores[index]})`,
-                                color: attentionScores[index] > 0.5 ? 'white' : 'black'
-                              }}
+                              className="relative group cursor-pointer"
                             >
-                              {token}
+                              <div 
+                                className="p-2 rounded text-sm sm:text-base transition-colors duration-200"
+                                style={{
+                                  backgroundColor: `rgba(59, 130, 246, ${score})`,
+                                  color: score > 0.5 ? 'white' : 'black'
+                                }}
+                              >
+                                {token}
+                              </div>
+                              {/* Tooltip */}
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                                Score: {(score * 100).toFixed(1)}%
+                              </div>
                             </motion.div>
-                          ))}
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Legend */}
+                      <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <div className="w-4 h-4 bg-blue-500 bg-opacity-20 rounded"></div>
+                          <span>Low Attention</span>
                         </div>
-                      </motion.div>
-                    )}
+                        <div className="flex items-center gap-1">
+                          <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                          <span>High Attention</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
 
                     {history.length > 0 && (
                       <motion.div
