@@ -1,11 +1,11 @@
-# Project Title: Political Stance Detection
+# Political Stance Detection
 ## Tagline
 A comprehensive application for analyzing political statements and tweets.
 
 ## Overview
 This project is a Political Stance Detection application that allows users to analyze tweets and detect the stance of political statements. It integrates with the Twitter API to fetch tweets and uses machine learning models to predict stances based on the content of the statements.
 
-## Backend Documentation
+## Backend 
 ### FastAPI Setup
 The backend is built using FastAPI. The following endpoints are available:
 
@@ -88,6 +88,13 @@ The frontend is built using React and provides an intuitive user interface for a
    ```bash
    uvicorn backend.app:app --reload
    ```
+   or 
+   ```bash
+   cd backend
+   uvicorn app:app  --host 127.0.0.1 --port 8000 --reload
+
+   ```
+
    This command will start the server in development mode, allowing for hot reloading of changes.
    
 2. Open the frontend application in your browser. You can do this by navigating to `http://localhost:3000` or the specified port in your React app.
