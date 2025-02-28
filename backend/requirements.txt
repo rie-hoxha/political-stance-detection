@@ -1,0 +1,8 @@
+# Backend
+fastapi
+pydantic
+transformers
+tweepy
+torch
+python-dotenv
+
