@@ -18,11 +18,9 @@ from datetime import datetime, timedelta
 load_dotenv()
 
 
-# Initialize FastAPI app
 app = FastAPI()
 
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,7 +29,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# New variables to track rate limiting
+# Variables to track rate limiting
 tweet_request_count = 0
 tweet_last_request_time = None
 TWEET_RATE_LIMIT_WINDOW = 900  # 15 minutes
@@ -90,6 +88,8 @@ def extract_tweet_id(tweet_url: str) -> str:
             return match.group(1)
     raise ValueError("Invalid Tweet URL format")
 
+    
+
 @app.post("/analyze_tweet/")
 async def analyze_tweet(input_data: TweetInput):
     global tweet_request_count
@@ -113,7 +113,6 @@ async def analyze_tweet(input_data: TweetInput):
             
             tweet_text = tweet.data.text
             
-            # Use the existing stance detection logic
             stance_input = StanceInput(
                 statement=tweet_text,
                 target=input_data.target
@@ -142,10 +141,10 @@ async def analyze_tweet(input_data: TweetInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error analyzing tweet: {str(e)}")
 
-# ----------- Code Block 1: Stance Detection Endpoints -----------
+# -----------  Stance Detection Endpoints -----------
 
 # Load the tokenizer and model
-model_name = "./models/final_stance_model"  # Path to your model
+model_name = "./models/final_stance_model" 
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSequenceClassification.from_pretrained(model_name, output_attentions=True)  
 
@@ -153,6 +152,30 @@ class StanceInput(BaseModel):
     statement: str
     target: str = None  # Make target optional
 
+
+def get_stance_relevant_attention(attentions, logits, tokens):
+    # Get the last layer's attention patterns
+    last_layer = attentions[-1]  # Shape: [batch, num_heads, seq_len, seq_len]
+    
+    # Get the predicted class
+    predicted_class = torch.argmax(logits, dim=1).item()
+    
+    # Average across heads but weight them based on their contribution to the predicted class
+    class_attention = torch.zeros(last_layer.size(-1))
+    
+    for head_idx in range(last_layer.size(1)):
+        head_attention = last_layer[0, head_idx]  # Get attention weights for this head
+        # Weight the attention based on how much this head contributes to the predicted class
+        head_contribution = head_attention.sum(dim=-1)
+        class_attention += head_contribution
+    
+    # Convert to numpy and normalize
+    attention_weights = class_attention.detach().cpu().numpy()
+    
+    # Normalize to preserve relative importance
+    attention_weights = attention_weights / attention_weights.sum()
+    
+    return attention_weights
 
 @app.get("/targets")
 async def get_targets():
@@ -167,12 +190,10 @@ async def predict_stance(input_data: StanceInput):
         if not input_data.statement.strip():
             raise HTTPException(status_code=400, detail="Input statement is empty.")
 
-        # Check if the target is in the predefined list or is a custom target
+        # Checks if the target is in the predefined list or is a custom target
         if input_data.target not in VALID_TARGETS:
-            # Custom target is allowed, no need to check against list
             detected_target = input_data.target
         else:
-            # Valid predefined target
             detected_target = input_data.target
 
         # Combine target and statement as in training
@@ -187,7 +208,7 @@ async def predict_stance(input_data: StanceInput):
             max_length=512,
         )
 
-        # Move model and inputs to the appropriate device
+        # Move model and inputs to the appropriate device (if the device has the resources)
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         model.to(device)
         inputs = {key: val.to(device) for key, val in inputs.items()}
@@ -203,27 +224,32 @@ async def predict_stance(input_data: StanceInput):
 
         detected_stance = stance_mapping.get(prediction, "Unknown")
 
-        # Process attention weights
         if attentions is not None:
-            last_attention = attentions[-1]
-            attention_scores = last_attention[0][0]
-            attention_scores = attention_scores.detach().cpu().numpy()
-            word_attention = attention_scores.mean(axis=0)
-            word_attention = word_attention.flatten()[:len(inputs['input_ids'][0]) - 2]
-        else:
-            word_attention = []
-
-        return {
-            "stance": detected_stance,
-            "target": detected_target,
-            "probabilities": {
-                "Support": probabilities[0],
-                "Against": probabilities[1],
-                "Neutral": probabilities[2],
-            },
-            "attention": word_attention.tolist(),
-            "tokens": tokenizer.convert_ids_to_tokens(inputs['input_ids'][0].tolist()),
-        }
+            # Get stance-specific attention weights
+            attention_weights = get_stance_relevant_attention(attentions, logits, tokenizer.convert_ids_to_tokens(inputs['input_ids'][0]))
+            
+            # Reduce weights for special tokens while preserving relative weights for content tokens
+            special_tokens = {'[CLS]', '[SEP]', '</s>', '<s>', '/', 's'}
+            token_list = tokenizer.convert_ids_to_tokens(inputs['input_ids'][0])
+            
+            for idx, token in enumerate(token_list):
+                if token in special_tokens:
+                    attention_weights[idx] *= 0.1  # Reduce special token importance
+                    
+            # Re-normalize after adjusting special tokens
+            attention_weights = attention_weights / attention_weights.sum()
+            
+            return {
+                "stance": detected_stance,
+                "target": detected_target,
+                "probabilities": {
+                    "Support": probabilities[0],
+                    "Against": probabilities[1],
+                    "Neutral": probabilities[2],
+                },
+                "attention": attention_weights.tolist(),
+                "tokens": token_list,
+            }
 
     except Exception as e:
         print(f"Error in predict_stance: {str(e)}")
